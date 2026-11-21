@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>20 Dolar Mezat</title>
+<meta name="description" content="20 dolarla açık artırma draft oyunu. Oda kur, kodu paylaş, arkadaşlarınla online oyna.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23f2b51c%22/%3E%3Ctext x=%2250%22 y=%2268%22 font-size=%2248%22 text-anchor=%22middle%22 font-family=%22monospace%22 font-weight=%22700%22%3E$20%3C/text%3E%3C/svg%3E">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@700&display=swap">
+<style>
+/* Layout: TV yarışma stüdyosu — üstte oyuncu kürsüleri (kasa + kazanılan fotoğraflar), ortada spot ışığı altındaki eşya fotoğrafı, yanında teklif paneli. */
+:root{
+  --bg:#eef1f7; --panel:#ffffff; --panel2:#e3e8f2; --ink:#141a2e; --muted:#58607d; --line:#d2d8e6;
+  --money:#0d8659; --paddle:#e8482a; --spot:#f2b51c; --shade:rgba(20,26,46,.08);
+  --display:"Bricolage Grotesque","Arial Narrow",system-ui,sans-serif;
+  --body:"Manrope","Segoe UI",system-ui,sans-serif;
+  --mono:"Space Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0c0f1f; --panel:#161a31; --panel2:#1f2442; --ink:#eef0fa; --muted:#9aa1c4; --line:#2a3052;
+  --money:#3ddc97; --paddle:#ff6a45; --spot:#ffd25a; --shade:rgba(0,0,0,.35); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c0f1f; --panel:#161a31; --panel2:#1f2442; --ink:#eef0fa; --muted:#9aa1c4; --line:#2a3052;
+  --money:#3ddc97; --paddle:#ff6a45; --spot:#ffd25a; --shade:rgba(0,0,0,.35); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:12px;font-family:var(--display);font-weight:800;font-size:clamp(28px,6vw,42px);line-height:1;letter-spacing:-.02em}
+.ticket{font-family:var(--mono);font-size:.62em;background:var(--spot);color:#1b1300;padding:6px 12px 5px;border-radius:6px;transform:rotate(-4deg);box-shadow:0 3px 0 var(--ink)}
+.tag{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+h2{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h3{font-family:var(--display);font-weight:800;font-size:19px;margin:0;line-height:1.15}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+label{font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px}
+input,textarea{font:inherit;font-size:16px;width:100%;padding:11px 13px;border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+textarea{min-height:190px;resize:vertical}
+.code-in{font-family:var(--mono);text-transform:uppercase;letter-spacing:.3em;font-size:20px}
+:focus-visible{outline:3px solid var(--spot);outline-offset:2px}
+button{font:inherit;font-weight:800;cursor:pointer;border-radius:10px;padding:12px 20px;border:2px solid var(--ink);background:var(--ink);color:var(--bg);transition:transform .12s}
+button:not(:disabled):active{transform:translateY(1px)}
+button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+button.ghost:not(:disabled):hover{border-color:var(--ink)}
+button.hot{background:var(--paddle);border-color:var(--paddle);color:#fff;box-shadow:0 4px 0 color-mix(in srgb,var(--paddle) 60%,#000)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.note{color:var(--muted);font-size:14px;margin:0}
+.err{color:var(--paddle);font-weight:700;font-size:14px;margin:0}
+.bigcode{font-family:var(--mono);font-size:clamp(40px,10vw,62px);letter-spacing:.22em;color:var(--spot);line-height:1}
+/* fotoğraf */
+.ph{position:relative;overflow:hidden;background:var(--panel2);border-radius:10px;max-width:100%}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph .fb{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:800;color:#fff;text-align:center;padding:8px;line-height:1}
+.ph.mem .fb{display:flex;flex-direction:column;justify-content:center;gap:.15em;container-type:inline-size;text-shadow:0 2px 10px rgba(80,0,30,.35)}
+.ph.mem .heart{font-size:max(12px,28cqi);line-height:1}
+.ph.mem .ms{font-size:max(8px,13cqi);line-height:1.05;overflow-wrap:anywhere}
+.lot .ph.mem .heart{font-size:clamp(60px,14vw,120px)} .lot .ph.mem .ms{font-size:clamp(20px,4vw,34px)}
+.lot .ph.mem .fb{padding-bottom:28%}
+.mini .ph.mem .ms{display:none} .mini .ph.mem .heart{font-size:14px}
+.th.special{border-color:#e0457b;background:linear-gradient(160deg,color-mix(in srgb,#e0457b 16%,var(--panel)),var(--panel))}
+.th.special .nm::before{content:"Özel mod · ";color:#e0457b}
+/* ana sayfa */
+.hero{display:grid;grid-template-columns:1.1fr 1fr;gap:18px;align-items:stretch}
+@media (max-width:760px){.hero{grid-template-columns:1fr}}
+.collage{position:relative;min-height:300px;border-radius:14px;background:var(--panel2);overflow:hidden}
+.collage .ph{position:absolute;width:40%;aspect-ratio:4/5;border:4px solid var(--panel);box-shadow:0 10px 24px var(--shade)}
+.collage .price{position:absolute;font-family:var(--mono);background:var(--money);color:#fff;padding:3px 8px;border-radius:6px;font-size:14px;bottom:8px;left:8px}
+.collage .claim{position:absolute;left:16px;bottom:14px;right:16px;font-family:var(--display);font-weight:800;font-size:clamp(22px,4vw,32px);line-height:1.05;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:480px){.split{grid-template-columns:1fr}}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.rule{display:flex;gap:12px;align-items:flex-start}
+.rule .n{font-family:var(--mono);background:var(--spot);color:#1b1300;border-radius:8px;min-width:34px;height:34px;display:grid;place-items:center;font-size:14px}
+.rule p{margin:2px 0 0;color:var(--muted);font-size:14px}
+/* tema seçimi */
+.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.th{display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);text-align:left;font-weight:700;min-width:0}
+.th .mosaic{display:grid;grid-template-columns:1fr 1fr;gap:3px;border-radius:8px;overflow:hidden;aspect-ratio:1}
+.th .mosaic .ph{border-radius:0;aspect-ratio:1}
+.th .nm{font-family:var(--display);font-size:16px;line-height:1.15;padding:0 4px 4px}
+.th.sel{border-color:var(--spot);box-shadow:0 0 0 3px color-mix(in srgb,var(--spot) 40%,transparent)}
+button.th:disabled{opacity:1;cursor:default}
+.th.custom .mosaic{display:grid;place-items:center;grid-template-columns:1fr;background:var(--panel2);font-family:var(--display);font-size:44px;color:var(--muted)}
+/* kürsüler */
+.podiums{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.pod{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.pod.me{border:2px solid var(--money)}
+.pod .top{display:flex;align-items:center;gap:8px;min-width:0}
+.av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;flex:none}
+.pod .nm{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.cash{font-family:var(--mono);font-size:24px;color:var(--money);font-variant-numeric:tabular-nums;line-height:1}
+.meter{height:5px;border-radius:3px;background:var(--panel2);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--money)}
+.st{font-size:12px;color:var(--muted);font-weight:700}
+.st.ok{color:var(--money)}
+.mini{display:flex;gap:4px;flex-wrap:wrap}
+.mini .ph{width:28px;height:28px;border-radius:6px}
+.mini .ph .fb{font-size:11px;padding:0}
+/* sahne */
+.stage{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;align-items:start}
+@media (max-width:760px){.stage{grid-template-columns:1fr}}
+.lot{position:relative;border-radius:16px;overflow:hidden;background:var(--panel2);aspect-ratio:4/3;max-width:100%;box-shadow:0 14px 40px var(--shade)}
+.lot .ph{position:absolute;inset:0;border-radius:0}
+.lot .ph .fb{font-size:clamp(44px,10vw,90px)}
+.lot .cap{position:absolute;left:0;right:0;bottom:0;padding:48px 18px 16px;background:linear-gradient(transparent,rgba(5,7,16,.88));color:#fff}
+.lot .no{font-family:var(--mono);font-size:12px;letter-spacing:.08em;opacity:.85}
+.lot .item{font-family:var(--display);font-weight:800;font-size:clamp(30px,5.5vw,50px);line-height:1;text-wrap:balance;overflow-wrap:anywhere}
+.lot .credit{position:absolute;top:10px;right:10px;font-size:11px;background:rgba(5,7,16,.6);color:#fff;padding:3px 8px;border-radius:6px;max-width:70%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none}
+.stamp{position:absolute;top:22px;left:18px;font-family:var(--display);font-weight:800;font-size:clamp(26px,5vw,40px);color:#fff;background:var(--paddle);padding:4px 16px;border-radius:8px;transform:rotate(-7deg);box-shadow:0 6px 0 rgba(0,0,0,.25);animation:slam .35s cubic-bezier(.2,1.6,.4,1)}
+.stamp.burn{background:#444a63}
+@keyframes slam{from{transform:rotate(-7deg) scale(2.2);opacity:0}to{transform:rotate(-7deg) scale(1);opacity:1}}
+.dots{display:flex;gap:5px;flex-wrap:wrap}
+.dots i{flex:1;min-width:14px;height:6px;border-radius:3px;background:var(--line)}
+.dots i.done{background:var(--money)} .dots i.now{background:var(--spot)}
+.panel{display:flex;flex-direction:column;gap:14px}
+.stepper{display:grid;grid-template-columns:56px 1fr 56px;align-items:center;gap:10px}
+.stepper button{height:56px;padding:0;font-size:28px;border-radius:12px}
+.amount{font-family:var(--mono);font-size:56px;text-align:center;font-variant-numeric:tabular-nums;color:var(--money);line-height:1}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips button{padding:7px 13px;font-family:var(--mono);font-size:14px;background:var(--panel2);color:var(--ink);border:0;border-radius:8px}
+.chips button.on{background:var(--ink);color:var(--bg)}
+.bidrow{display:grid;grid-template-columns:30px 1fr auto;gap:10px;padding:8px 10px;border-radius:10px;background:var(--panel2);align-items:center;min-width:0}
+.bidrow .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.bidrow.win{background:var(--money);color:#fff}
+.bidrow b{font-family:var(--mono);font-variant-numeric:tabular-nums}
+/* sonuç */
+.teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.team{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.team.top{border:3px solid var(--spot)}
+.team .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.team .it{display:flex;flex-direction:column;gap:3px;min-width:0}
+.team .it .ph{aspect-ratio:1}
+.team .it span{font-size:12px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team .it b{font-family:var(--mono);font-size:12px;color:var(--money)}
+.votes{font-family:var(--mono);color:var(--spot);font-size:18px}
+.judge{border-left:4px solid var(--spot);padding:12px 14px;background:var(--panel2);border-radius:0 10px 10px 0;white-space:pre-wrap}
+details.credits{font-size:12px;color:var(--muted)}
+details.credits summary{cursor:pointer;font-weight:700}
+details.credits ul{columns:2 260px;padding-left:18px}
+details.credits a{color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="logo"><span class="ticket">$20</span>Mezat</div>
+    <div class="tag" id="modeTag">Açık artırma draft · 2-8 oyuncu</div>
+  </header>
+  <main id="app"></main>
+  <details class="credits"><summary>Görsel kaynakları (Wikimedia Commons)</summary><ul id="credits"></ul></details>
+</div>
+
+<script>
+const DATA={"themes": [{"id": "superlig", "name": "Süper Lig efsane kadrosu", "items": [{"t": "Gheorghe Hagi", "img": "superlig-0"}, {"t": "Alex de Souza", "img": "superlig-1"}, {"t": "Rüştü Reçber", "img": "superlig-2"}, {"t": "Hakan Şükür", "img": "superlig-3"}, {"t": "Metin Oktay", "img": "superlig-4"}, {"t": "Tanju Çolak", "img": null}, {"t": "Sergen Yalçın", "img": "superlig-6"}, {"t": "Arda Turan", "img": "superlig-7"}, {"t": "Emre Belözoğlu", "img": "superlig-8"}, {"t": "Ricardo Quaresma", "img": "superlig-9"}]}, {"id": "efsane", "name": "Dünya futbol efsaneleri", "items": [{"t": "Lionel Messi", "img": "efsane-0"}, {"t": "Cristiano Ronaldo", "img": "efsane-1"}, {"t": "Pelé", "img": "efsane-2"}, {"t": "Diego Maradona", "img": "efsane-3"}, {"t": "Zinedine Zidane", "img": "efsane-4"}, {"t": "Ronaldinho", "img": "efsane-5"}, {"t": "Johan Cruyff", "img": "efsane-6"}, {"t": "Ronaldo Nazário", "img": "efsane-7"}, {"t": "Franz Beckenbauer", "img": "efsane-8"}, {"t": "Paolo Maldini", "img": "efsane-9"}]}, {"id": "nba", "name": "NBA rüya takımı", "items": [{"t": "Michael Jordan", "img": "nba-0"}, {"t": "LeBron James", "img": "nba-1"}, {"t": "Kobe Bryant", "img": "nba-2"}, {"t": "Magic Johnson", "img": "nba-3"}, {"t": "Larry Bird", "img": "nba-4"}, {"t": "Shaquille O'Neal", "img": "nba-5"}, {"t": "Stephen Curry", "img": "nba-6"}, {"t": "Kareem Abdul-Jabbar", "img": "nba-7"}, {"t": "Tim Duncan", "img": "nba-8"}, {"t": "Hidayet Türkoğlu", "img": "nba-9"}]}, {"id": "garaj", "name": "Rüya garaj", "items": [{"t": "Ferrari F40", "img": "garaj-0"}, {"t": "Lamborghini Countach", "img": "garaj-1"}, {"t": "Porsche 911", "img": "garaj-2"}, {"t": "Tofaş Şahin", "img": "garaj-3"}, {"t": "Toyota Supra", "img": "garaj-4"}, {"t": "BMW M3 E30", "img": "garaj-5"}, {"t": "1967 Ford Mustang", "img": "garaj-6"}, {"t": "Mercedes G-Serisi", "img": "garaj-7"}, {"t": "Bugatti Chiron", "img": "garaj-8"}, {"t": "Murat 131", "img": "garaj-9"}]}, {"id": "modif", "name": "Araba modifiye aksesuarları", "items": [{"t": "Turbo", "img": "modif-0"}, {"t": "Spoiler", "img": "modif-1"}, {"t": "Spor jant", "img": "modif-2"}, {"t": "Spor egzoz", "img": "modif-3"}, {"t": "Body kit", "img": "modif-4"}, {"t": "Basık süspansiyon", "img": "modif-5"}, {"t": "Neon alt aydınlatma", "img": "modif-6"}, {"t": "Yarış koltuğu", "img": "modif-7"}, {"t": "Karbon kaput", "img": "modif-8"}, {"t": "Folyo kaplama", "img": "modif-9"}]}, {"id": "sokak", "name": "Gece yarısı sokak lezzeti", "items": [{"t": "Döner", "img": "sokak-0"}, {"t": "Lahmacun", "img": "sokak-1"}, {"t": "İskender", "img": "sokak-2"}, {"t": "Kokoreç", "img": "sokak-3"}, {"t": "Çiğ köfte", "img": "sokak-4"}, {"t": "Tantuni", "img": "sokak-5"}, {"t": "Kumpir", "img": "sokak-6"}, {"t": "Midye dolma", "img": "sokak-7"}, {"t": "Islak hamburger", "img": "sokak-8"}, {"t": "Pide", "img": "sokak-9"}]}, {"id": "kahvalti", "name": "Pazar kahvaltısı", "items": [{"t": "Menemen", "img": "kahvalti-0"}, {"t": "Sucuklu yumurta", "img": "kahvalti-1"}, {"t": "Simit", "img": "kahvalti-2"}, {"t": "Bal kaymak", "img": "kahvalti-3"}, {"t": "Beyaz peynir", "img": "kahvalti-4"}, {"t": "Zeytin", "img": "kahvalti-5"}, {"t": "Sigara böreği", "img": "kahvalti-6"}, {"t": "Demlik çay", "img": "kahvalti-7"}, {"t": "Gözleme", "img": "kahvalti-8"}, {"t": "Pişi", "img": "kahvalti-9"}]}, {"id": "tatli", "name": "Tatlı tezgâhı", "items": [{"t": "Baklava", "img": "tatli-0"}, {"t": "Künefe", "img": "tatli-1"}, {"t": "Sütlaç", "img": "tatli-2"}, {"t": "Kazandibi", "img": "tatli-3"}, {"t": "Lokum", "img": "tatli-4"}, {"t": "Tiramisu", "img": "tatli-5"}, {"t": "Cheesecake", "img": "tatli-6"}, {"t": "Maraş dondurması", "img": "tatli-7"}, {"t": "Profiterol", "img": "tatli-8"}, {"t": "Trileçe", "img": "tatli-9"}]}, {"id": "hayvan", "name": "Hayvan ordusu", "items": [{"t": "Aslan", "img": "hayvan-0"}, {"t": "Kaplan", "img": "hayvan-1"}, {"t": "Fil", "img": "hayvan-2"}, {"t": "Goril", "img": "hayvan-3"}, {"t": "Timsah", "img": "hayvan-4"}, {"t": "Kartal", "img": "hayvan-5"}, {"t": "Kurt", "img": "hayvan-6"}, {"t": "Boz ayı", "img": "hayvan-7"}, {"t": "Köpekbalığı", "img": "hayvan-8"}, {"t": "Ahtapot", "img": "hayvan-9"}]}, {"id": "muzik", "name": "Türk müziği efsaneleri", "items": [{"t": "Barış Manço", "img": "muzik-0"}, {"t": "Tarkan", "img": "muzik-1"}, {"t": "Sezen Aksu", "img": "muzik-2"}, {"t": "Cem Karaca", "img": "muzik-3"}, {"t": "Orhan Gencebay", "img": null}, {"t": "Ajda Pekkan", "img": "muzik-5"}, {"t": "Zeki Müren", "img": "muzik-6"}, {"t": "Neşet Ertaş", "img": "muzik-7"}, {"t": "Sertab Erener", "img": "muzik-8"}, {"t": "Kenan Doğulu", "img": "muzik-9"}]}, {"id": "konsol", "name": "Efsane oyun konsolları", "items": [{"t": "PlayStation", "img": "konsol-0"}, {"t": "PlayStation 2", "img": "konsol-1"}, {"t": "NES", "img": "konsol-2"}, {"t": "Game Boy", "img": "konsol-3"}, {"t": "Sega Mega Drive", "img": "konsol-4"}, {"t": "Xbox 360", "img": "konsol-5"}, {"t": "Nintendo Switch", "img": "konsol-6"}, {"t": "Atari 2600", "img": "konsol-7"}, {"t": "Nintendo Wii", "img": "konsol-8"}, {"t": "PSP", "img": "konsol-9"}]}, {"id": "harika", "name": "Dünya harikaları turu", "items": [{"t": "Gize Piramitleri", "img": "harika-0"}, {"t": "Çin Seddi", "img": "harika-1"}, {"t": "Tac Mahal", "img": "harika-2"}, {"t": "Machu Picchu", "img": "harika-3"}, {"t": "Kolezyum", "img": "harika-4"}, {"t": "Ayasofya", "img": "harika-5"}, {"t": "Petra", "img": "harika-6"}, {"t": "Eyfel Kulesi", "img": "harika-7"}, {"t": "Göbeklitepe", "img": "harika-8"}, {"t": "Nemrut Dağı", "img": "harika-9"}]}, {"id": "tatil", "name": "Tatil rotası", "items": [{"t": "Kapadokya", "img": "tatil-0"}, {"t": "Bodrum", "img": "tatil-1"}, {"t": "Paris", "img": "tatil-2"}, {"t": "Tokyo", "img": "tatil-3"}, {"t": "Bali", "img": "tatil-4"}, {"t": "Maldivler", "img": "tatil-5"}, {"t": "Roma", "img": "tatil-6"}, {"t": "New York", "img": "tatil-7"}, {"t": "Rize yaylaları", "img": "tatil-8"}, {"t": "Kaş", "img": "tatil-9"}]}, {"id": "guc", "name": "Süper güçler", "items": [{"t": "Uçmak", "img": null}, {"t": "Görünmezlik", "img": null}, {"t": "Işınlanma", "img": null}, {"t": "Zamanı durdurmak", "img": null}, {"t": "Zihin okumak", "img": null}, {"t": "Süper güç", "img": null}, {"t": "Anında iyileşme", "img": null}, {"t": "Telekinezi", "img": null}, {"t": "Şekil değiştirmek", "img": null}, {"t": "Ölümsüzlük", "img": null}]}, {"id": "anilar", "name": "Sena ve Memo'nun anıları", "items": [{"t": "İlk randevu: Brio", "img": null, "s": "Brio"}, {"t": "İlk konuşmamız: bilginin kapanması", "img": null, "s": "Bilgi kapandı"}, {"t": "İlk sinema: Backrooms korku filmi", "img": null, "s": "Backrooms"}, {"t": "Tersane günü: satranç masasında “siyah başlar” şakası", "img": null, "s": "Siyah başlar"}, {"t": "Canların evine gittiğimiz gün", "img": null, "s": "Canlar"}, {"t": "Mami'nin doğum günü", "img": null, "s": "Mami"}, {"t": "Arthur'un doğum günü", "img": null, "s": "Arthur"}, {"t": "27 Haziran: Hideout'tan sonra çıkma teklifi", "img": null, "s": "27 Haziran"}], "special": true}], "credits": {"superlig-0": {"file": "superlig-0.jpg", "src": "https://commons.wikimedia.org/wiki/File:Lansarea_candidaturii_Gabrielei_Szabo_pentru_Camera_Deputatilor%2C_Voluntari_-_04.05_%2848%29_%2814270956179%29_%28cropped%29.jpg", "author": "Partidul Social Democrat from Romania", "license": "CC BY 2.0"}, "superlig-1": {"file": "superlig-1.png", "src": "https://commons.wikimedia.org/wiki/File:Alex_de_Souza_2025.png", "author": "Emerson Ceará", "license": "CC BY 3.0"}, "superlig-2": {"file": "superlig-2.jpg", "src": "https://commons.wikimedia.org/wiki/File:Rustu_Recber_2010.jpg", "author": "Esteban869", "license": "CC BY-SA 3.0"}, "superlig-3": {"file": "superlig-3.jpg", "src": "https://commons.wikimedia.org/wiki/File:Hakan.jpg", "author": "Vulkahn at German Wikipedia", "license": "CC BY-SA 3.0"}, "superlig-4": {"file": "superlig-4.jpg", "src": "https://commons.wikimedia.org/wiki/File:Metin_Oktay.jpg", "author": "Harry Pot / Anefo", "license": "CC0"}, "superlig-6": {"file": "superlig-6.jpg", "src": "https://commons.wikimedia.org/wiki/File:Sergen_Yal%C3%A7%C4%B1n_2019_%282%29.jpg", "author": "beIN SPORTS Türkiye", "license": "CC BY 4.0"}, "superlig-7": {"file": "superlig-7.jpg", "src": "https://commons.wikimedia.org/wiki/File:%D0%90%D1%80%D0%B4%D0%B0_%D0%A2%D1%83%D1%80%D0%B0%D0%BD_%28cropped%29.webp", "author": "ФК \"Карпати\" Львів", "license": "CC BY 4.0"}, "superlig-9": {"file": "superlig-9.jpg", "src": "https://commons.wikimedia.org/wiki/File:Ricardo_Quaresma_%28cropped%29_2.jpg", "author": "Анна Нэсси", "license": "CC BY-SA 3.0"}, "efsane-0": {"file": "efsane-0.jpg", "src": "https://commons.wikimedia.org/wiki/File:Leo_Messi_Argentina_v_Egypt_7_July_2026-1.jpg", "author": "Bryan Berlin", "license": "CC BY-SA 4.0"}, "efsane-1": {"file": "efsane-1.jpg", "src": "https://commons.wikimedia.org/wiki/File:Cristiano_Ronaldo_Croatia_v_Portugal_2_July_2026-075_%28cropped%29.jpg", "author": "Bryan Berlin", "license": "CC BY-SA 4.0"}, "efsane-3": {"file": "efsane-3.jpg", "src": "https://commons.wikimedia.org/wiki/File:Argentina_celebrando_copa_%28cropped%29.jpg", "author": "Unknown authorUnknown author", "license": "Public domain"}, "efsane-4": {"file": "efsane-4.jpg", "src": "https://commons.wikimedia.org/wiki/File:Zinedine_Zidane_by_Tasnim_03.jpg", "author": "Hadi Abyar", "license": "CC BY 4.0"}, "efsane-5": {"file": "efsane-5.jpg", "src": "https://commons.wikimedia.org/wiki/File:2019_-_Press_conferences_-_Day_1_ENX_6950_%2849019873887%29_%28cropped%29.jpg", "author": "Web Summit", "license": "CC BY 2.0"}, "efsane-7": {"file": "efsane-7.jpg", "src": "https://commons.wikimedia.org/wiki/File:12.12.2025_%E2%80%93_Cerim%C3%B4nia_de_lan%C3%A7amento_do_SBT_News_-_54980664160_%28cropped2%29.jpg", "author": "Lula Oficial", "license": "CC BY-SA 4.0"}, "nba-0": {"file": "nba-0.jpg", "src": "https://commons.wikimedia.org/wiki/File:Michael_Jordan_in_2014.jpg", "author": "DOD photo by D. Myles Cullen", "license": "Public domain"}, "nba-1": {"file": "nba-1.jpg", "src": "https://commons.wikimedia.org/wiki/File:LeBron_James_%2851959977144%29_%28cropped2%29.jpg", "author": "Erik Drost", "license": "CC BY 2.0"}, "nba-2": {"file": "nba-2.jpg", "src": "https://commons.wikimedia.org/wiki/File:Kobe_Bryant_Dec_2014.jpg", "author": "Keith Allison", "license": "CC BY-SA 2.0"}, "nba-3": {"file": "nba-3.jpg", "src": "https://commons.wikimedia.org/wiki/File:Magic_Johnson_at_SXSW_2022_%2851958828669%29_%28cropped%29.jpg", "author": "Daniel Benavides from Austin, TX", "license": "CC BY 2.0"}, "nba-4": {"file": "nba-4.jpg", "src": "https://commons.wikimedia.org/wiki/File:Larrybird.jpg", "author": "Kurt Shimala", "license": "CC BY-SA 2.0"}, "nba-5": {"file": "nba-5.jpg", "src": "https://commons.wikimedia.org/wiki/File:TechCrunch_Disrupt_2023_-_Day_1_%28cropped%29.jpg", "author": "TechCrunch", "license": "CC BY 2.0"}, "nba-6": {"file": "nba-6.jpg", "src": "https://commons.wikimedia.org/wiki/File:Stephen_Curry_%2824511268640%29_%28cropped%29.jpg", "author": "Keith Allison from Hanover, MD, USA", "license": "CC BY-SA 2.0"}, "nba-7": {"file": "nba-7.jpg", "src": "https://commons.wikimedia.org/wiki/File:Kareem_Abdul-Jabbar_May_2014.jpg", "author": "Yahoo from Sunnyvale, California, USA", "license": "CC BY 2.0"}, "nba-8": {"file": "nba-8.jpg", "src": "https://commons.wikimedia.org/wiki/File:Tim_Duncan.jpg", "author": "Keith Allison from Owings Mills, USA", "license": "CC BY-SA 2.0"}, "garaj-0": {"file": "garaj-0.jpg", "src": "https://commons.wikimedia.org/wiki/File:F40_Ferrari_20090509.jpg", "author": "Will ainsworth", "license": "CC BY-SA 3.0"}, "garaj-1": {"file": "garaj-1.jpg", "src": "https://commons.wikimedia.org/wiki/File:Lamborghini_Countach_-_Flickr_-_exfordy_%282%29_%28cropped-2%29.jpg", "author": "Brian Snelson from Hockley, Essex, England", "license": "CC BY 2.0"}, "garaj-7": {"file": "garaj-7.jpg", "src": "https://commons.wikimedia.org/wiki/File:Mercedes-Benz_W463_G_350_BlueTEC_01.jpg", "author": "Julian Herzog (Website)", "license": "CC BY 4.0"}, "sokak-2": {"file": "sokak-2.jpg", "src": "https://commons.wikimedia.org/wiki/File:%C4%B0skender_Kebap.jpg", "author": "Garrett Ziegler", "license": "CC BY-SA 4.0"}, "sokak-6": {"file": "sokak-6.jpg", "src": "https://commons.wikimedia.org/wiki/File:Kumpir_-_Turkish_Cuisine.jpg", "author": "Mervat Salman", "license": "CC BY-SA 4.0"}, "kahvalti-0": {"file": "kahvalti-0.jpg", "src": "https://commons.wikimedia.org/wiki/File:Menemen_in_a_sahan.jpg", "author": "E4024", "license": "CC BY-SA 4.0"}, "kahvalti-2": {"file": "kahvalti-2.jpg", "src": "https://commons.wikimedia.org/wiki/File:Simit-2x.JPG", "author": "", "license": "CC BY-SA 3.0"}, "kahvalti-5": {"file": "kahvalti-5.jpg", "src": "https://commons.wikimedia.org/wiki/File:Olivesfromjordan.jpg", "author": "en:User:Nickfraser", "license": "CC BY-SA 3.0"}, "kahvalti-8": {"file": "kahvalti-8.jpg", "src": "https://commons.wikimedia.org/wiki/File:G%C3%B6zleme.JPG", "author": "Maderibeyza", "license": "CC BY-SA 3.0"}, "tatli-0": {"file": "tatli-0.png", "src": "https://commons.wikimedia.org/wiki/File:Baklava%281%29.png", "author": "Sakaman", "license": "CC BY-SA 4.0"}, "tatli-2": {"file": "tatli-2.jpg", "src": "https://commons.wikimedia.org/wiki/File:Kheer_with_condensed_milk..JPG", "author": "Shivangisj", "license": "CC BY-SA 4.0"}, "tatli-5": {"file": "tatli-5.jpg", "src": "https://commons.wikimedia.org/wiki/File:Tiramisu_-_Raffaele_Diomede.jpg", "author": "Raffaele Diomede from Pordenone, ITALIA", "license": "CC BY 2.0"}, "tatli-6": {"file": "tatli-6.jpg", "src": "https://commons.wikimedia.org/wiki/File:Baked_cheesecake_with_raspberries_and_blueberries.jpg", "author": "zingyyellow", "license": "CC BY 2.0"}, "tatli-7": {"file": "tatli-7.jpg", "src": "https://commons.wikimedia.org/wiki/File:Dondurma_with_kabak.jpg", "author": "E4024", "license": "CC BY-SA 4.0"}, "tatli-8": {"file": "tatli-8.jpg", "src": "https://commons.wikimedia.org/wiki/File:Paris_2e_-_Rue_Vivienne_-_Restaurant_Le_Vaudeville_-_Profiteroles_au_chocolat.jpg", "author": "Romainbehar", "license": "CC0"}, "hayvan-0": {"file": "hayvan-0.jpg", "src": "https://commons.wikimedia.org/wiki/File:020_The_lion_king_Snyggve_in_the_Serengeti_National_Park_Photo_by_Giles_Laurent.jpg", "author": "Giles Laurent", "license": "CC BY-SA 4.0"}, "hayvan-2": {"file": "hayvan-2.jpg", "src": "https://commons.wikimedia.org/wiki/File:African_Elephant_%28Loxodonta_africana%29_male_%2817289351322%29.jpg", "author": "Bernard DUPONT from FRANCE", "license": "CC BY-SA 2.0"}, "hayvan-3": {"file": "hayvan-3.jpg", "src": "https://commons.wikimedia.org/wiki/File:Gorille_des_plaines_de_l%27ouest_%C3%A0_l%27Espace_Zoologique.jpg", "author": "Thurundir", "license": "CC BY-SA 4.0"}, "hayvan-4": {"file": "hayvan-4.jpg", "src": "https://commons.wikimedia.org/wiki/File:SaltwaterCrocodile%28%27Maximo%27%29.jpg", "author": "Obtained from Molly Ebersold of the St. Augustine Alligator Farm", "license": "Public domain"}, "hayvan-5": {"file": "hayvan-5.jpg", "src": "https://commons.wikimedia.org/wiki/File:015_Wild_Golden_Eagle_in_flight_at_Pfyn-Finges_%28Switzerland%29_Photo_by_Giles_Laurent.jpg", "author": "Giles Laurent", "license": "CC BY-SA 4.0"}, "hayvan-6": {"file": "hayvan-6.jpg", "src": "https://commons.wikimedia.org/wiki/File:Eurasian_wolf_2.jpg", "author": "User:Mas3cf", "license": "CC BY-SA 4.0"}, "hayvan-7": {"file": "hayvan-7.jpg", "src": "https://commons.wikimedia.org/wiki/File:2010-kodiak-bear-1.jpg", "author": "Yathin S Krishnappa", "license": "CC BY-SA 3.0"}, "hayvan-8": {"file": "hayvan-8.jpg", "src": "https://commons.wikimedia.org/wiki/File:White_shark.jpg", "author": "Pterantula (Terry Goss) at en.wikipedia", "license": "CC BY 2.5"}, "hayvan-9": {"file": "hayvan-9.jpg", "src": "https://commons.wikimedia.org/wiki/File:Octopus2.jpg", "author": "albert kok", "license": "CC BY-SA 3.0"}, "muzik-0": {"file": "muzik-0.jpg", "src": "https://commons.wikimedia.org/wiki/File:Bar%C4%B1%C5%9F_Man%C3%A7o.jpg", "author": "Serkan KELEŞ", "license": "CC BY 4.0"}, "muzik-1": {"file": "muzik-1.jpg", "src": "https://commons.wikimedia.org/wiki/File:Tarkan_%289%29.jpg", "author": "Hakki.T (Hakki Topcu)", "license": "CC BY 2.0"}, "muzik-2": {"file": "muzik-2.jpg", "src": "https://commons.wikimedia.org/wiki/File:Sezen_Aksu_%28Minik_Ser%C3%A7e%29_%28cropped%29.jpg", "author": "E4024", "license": "CC BY-SA 4.0"}, "muzik-3": {"file": "muzik-3.jpg", "src": "https://commons.wikimedia.org/wiki/File:2021_09_15_Moda_Cem_Karaca_Heykeli.jpg", "author": "HalitBaris", "license": "CC BY-SA 4.0"}, "muzik-5": {"file": "muzik-5.jpg", "src": "https://commons.wikimedia.org/wiki/File:Ajda_Pekkan_2013.jpg", "author": "Firuza48", "license": "CC BY-SA 2.0"}, "muzik-9": {"file": "muzik-9.jpg", "src": "https://commons.wikimedia.org/wiki/File:Kenan_Dogulu_1060880_Nevit.jpg", "author": "Nevit Dilmen (talk)", "license": "CC BY-SA 3.0"}, "konsol-0": {"file": "konsol-0.jpg", "src": "https://commons.wikimedia.org/wiki/File:PSX-Console-wController.jpg", "author": "Evan-Amos", "license": "Public domain"}, "konsol-1": {"file": "konsol-1.png", "src": "https://commons.wikimedia.org/wiki/File:Sony_PlayStation_2.png", "author": "Perchybits", "license": "CC0"}, "konsol-4": {"file": "konsol-4.jpg", "src": "https://commons.wikimedia.org/wiki/File:Sega-Mega-Drive-JP-Mk1-Console-Set.jpg", "author": "Evan-Amos", "license": "Public domain"}, "konsol-7": {"file": "konsol-7.png", "src": "https://commons.wikimedia.org/wiki/File:Atari-2600-Wood-4Sw-Set.png", "author": "Evan-Amos", "license": "Public domain"}, "konsol-8": {"file": "konsol-8.png", "src": "https://commons.wikimedia.org/wiki/File:Wii-Console.png", "author": "Evan-Amos", "license": "Public domain"}, "konsol-9": {"file": "konsol-9.png", "src": "https://commons.wikimedia.org/wiki/File:PSP-1000.png", "author": "Psp-1000.jpg: Evan-Amos\nderivative work: Alphathon™ (talk)", "license": "CC BY-SA 3.0"}, "harika-0": {"file": "harika-0.jpg", "src": "https://commons.wikimedia.org/wiki/File:Pyramids_of_the_Giza_Necropolis.jpg", "author": "KennyOMG", "license": "CC BY-SA 4.0"}, "harika-1": {"file": "harika-1.jpg", "src": "https://commons.wikimedia.org/wiki/File:The_Great_Wall_of_China_at_Jinshanling-edit.jpg", "author": "Severin.stalder", "license": "CC BY-SA 3.0"}, "harika-2": {"file": "harika-2.jpg", "src": "https://commons.wikimedia.org/wiki/File:Taj_Mahal_%28Edited%29.jpeg", "author": "Yann; edited by Jim Carter", "license": "CC BY-SA 4.0"}, "harika-3": {"file": "harika-3.jpg", "src": "https://commons.wikimedia.org/wiki/File:Machu_Picchu%2C_2023_%28012%29.jpg", "author": "Draceane", "license": "CC BY-SA 4.0"}, "harika-4": {"file": "harika-4.jpg", "src": "https://commons.wikimedia.org/wiki/File:Colosseo_2020.jpg", "author": "FeaturedPics", "license": "CC BY-SA 4.0"}, "harika-5": {"file": "harika-5.jpg", "src": "https://commons.wikimedia.org/wiki/File:Hagia_Sophia_%28228968325%29.jpeg", "author": "Adli Wahid", "license": "CC BY-SA 3.0"}, "harika-6": {"file": "harika-6.jpg", "src": "https://commons.wikimedia.org/wiki/File:Al_Deir_Petra.JPG", "author": "Azurfrog", "license": "CC BY-SA 3.0"}, "harika-7": {"file": "harika-7.jpg", "src": "https://commons.wikimedia.org/wiki/File:Tour_Eiffel_Wikimedia_Commons.jpg", "author": "Benh LIEU SONG", "license": "Public domain"}, "harika-8": {"file": "harika-8.jpg", "src": "https://commons.wikimedia.org/wiki/File:G%C3%B6bekli_Tepe%2C_Urfa.jpg", "author": "Teomancimit", "license": "CC BY-SA 3.0"}, "harika-9": {"file": "harika-9.jpg", "src": "https://commons.wikimedia.org/wiki/File:Mount_Nemrut_-_East_Terrace_%284961323529%29.jpg", "author": "Klearchos Kapoutsis from Santorini, Greece", "license": "CC BY 2.0"}, "tatil-0": {"file": "tatil-0.jpg", "src": "https://commons.wikimedia.org/wiki/File:Cappadocia_balloon_trip%2C_Ortahisar_Castle_%2811893715185%29.jpg", "author": "Arian Zwegers from Brussels, Belgium", "license": "CC BY 2.0"}, "tatil-1": {"file": "tatil-1.jpg", "src": "https://commons.wikimedia.org/wiki/File:Sunset_over_Bodrum_I.jpg", "author": "The 3B's", "license": "CC BY 2.0"}, "tatil-2": {"file": "tatil-2.jpg", "src": "https://commons.wikimedia.org/wiki/File:Paris,_Notre_Dame_--_2014_--_1458-65.jpg", "author": "Dietmar Rabich", "license": "CC BY-SA 4.0"}, "tatil-3": {"file": "tatil-3.jpg", "src": "https://commons.wikimedia.org/wiki/File:Skyscrapers_of_Shinjuku_2009_January.jpg", "author": "Morio", "license": "CC BY-SA 3.0"}, "tatil-4": {"file": "tatil-4.png", "src": "https://commons.wikimedia.org/wiki/File:Bali_in_Indonesia_%28special_marker%29.svg", "author": "TUBS", "license": "CC BY-SA 3.0"}, "tatil-5": {"file": "tatil-5.jpg", "src": "https://commons.wikimedia.org/wiki/File:Reethi_Beach_Maldives.jpg", "author": "Michael Hobi", "license": "CC BY-SA 3.0"}, "tatil-6": {"file": "tatil-6.jpg", "src": "https://commons.wikimedia.org/wiki/File:Fontaine_Trevi_-_Rome.jpg", "author": "Wilfredor", "license": "CC0"}, "superlig-8": {"file": "superlig-8.jpg", "src": "https://commons.wikimedia.org/wiki/File:Emre_Bel%C3%B6zo%C4%9Flu_Kas%C4%B1mpa%C5%9Fa_SK_20260130_%284%29.jpg", "author": "Zafer", "license": "CC BY 4.0"}, "efsane-2": {"file": "efsane-2.jpg", "src": "https://commons.wikimedia.org/wiki/File:Pele_con_brasil_%28cropped%29.jpg", "author": "Unknown authorUnknown author", "license": "Public domain"}, "efsane-6": {"file": "efsane-6.jpg", "src": "https://commons.wikimedia.org/wiki/File:Johan_Cruijff_%281974%29.jpg", "author": "Rob Mieremet / Anefo", "license": "CC0"}, "efsane-8": {"file": "efsane-8.jpg", "src": "https://commons.wikimedia.org/wiki/File:Franz_Beckenbauer_%281975%29.jpg", "author": "Panini Group", "license": "Public domain"}, "efsane-9": {"file": "efsane-9.jpg", "src": "https://commons.wikimedia.org/wiki/File:Paolo_Maldini_AC_Milan_Technical_director_2018.jpg", "author": "GOAL TV", "license": "CC BY 3.0"}, "nba-9": {"file": "nba-9.jpg", "src": "https://commons.wikimedia.org/wiki/File:Hidayet_T%C3%BCrko%C4%9Flu_20261109_%282%29_%28cropped%29.jpg", "author": "User:Zafer", "license": "CC BY-SA 4.0"}, "garaj-2": {"file": "garaj-2.jpg", "src": "https://commons.wikimedia.org/wiki/File:Porsche_911_No_1000000%2C_70_Years_Porsche_Sports_Car%2C_Berlin_%281X7A3888%29.jpg", "author": "Matti Blume", "license": "CC BY-SA 4.0"}, "garaj-3": {"file": "garaj-3.jpg", "src": "https://commons.wikimedia.org/wiki/File:Tofa%C5%9F_%C5%9Eahin.jpg", "author": "Khutuck", "license": "Public domain"}, "garaj-4": {"file": "garaj-4.png", "src": "https://commons.wikimedia.org/wiki/File:2020_Toyota_GR_Supra_%28United_States%29.png", "author": "Gold Pony", "license": "CC BY 3.0"}, "garaj-5": {"file": "garaj-5.jpg", "src": "https://commons.wikimedia.org/wiki/File:BMW_M3_CSL%2BM3_E30_(2741406343).jpg", "author": "nakhon100", "license": "CC BY 2.0"}, "garaj-6": {"file": "garaj-6.jpg", "src": "https://commons.wikimedia.org/wiki/File:1965_Ford_Mustang_2D_Hardtop_Front.jpg", "author": "Kroelleboelle", "license": "CC BY-SA 3.0"}, "garaj-8": {"file": "garaj-8.jpg", "src": "https://commons.wikimedia.org/wiki/File:Bugatti_Chiron_1.jpg", "author": "Calreyn88", "license": "CC BY-SA 4.0"}, "garaj-9": {"file": "garaj-9.jpg", "src": "https://commons.wikimedia.org/wiki/File:1976_Fiat_131_S_1600_%2813939009329%29.jpg", "author": "davocano", "license": "CC BY 2.0"}, "sokak-0": {"file": "sokak-0.jpg", "src": "https://commons.wikimedia.org/wiki/File:D%C3%B6ner_kebab_slicing.jpg", "author": "", "license": "CC BY-SA 3.0"}, "sokak-1": {"file": "sokak-1.jpg", "src": "https://commons.wikimedia.org/wiki/File:Lahmacun.jpg", "author": "No machine-readable author provided. Rainer Zenz assumed (based on copyright cla", "license": "CC BY-SA 3.0"}, "sokak-3": {"file": "sokak-3.jpg", "src": "https://commons.wikimedia.org/wiki/File:Kokore%C3%A7.JPG", "author": "Ankara", "license": "CC BY-SA 3.0"}, "sokak-4": {"file": "sokak-4.jpg", "src": "https://commons.wikimedia.org/wiki/File:Turkish_%C3%A7i%C4%9F_k%C3%B6fte.jpg", "author": "E4024", "license": "CC BY-SA 4.0"}, "sokak-5": {"file": "sokak-5.jpg", "src": "https://commons.wikimedia.org/wiki/File:Tantuni_sokak_yeme%C4%9Fi.jpg", "author": "Joquee", "license": "CC BY-SA 4.0"}, "sokak-7": {"file": "sokak-7.jpg", "src": "https://commons.wikimedia.org/wiki/File:Midye_dolma_%286%29.JPG", "author": "Fenerli1978", "license": "CC BY-SA 4.0"}, "sokak-8": {"file": "sokak-8.jpg", "src": "https://commons.wikimedia.org/wiki/File:Islak_hamburger_istanbul_2023.jpg", "author": "", "license": "CC BY-SA 4.0"}, "sokak-9": {"file": "sokak-9.jpg", "src": "https://commons.wikimedia.org/wiki/File:Bafra_pidesi.jpg", "author": "E4024", "license": "CC BY-SA 4.0"}, "kahvalti-1": {"file": "kahvalti-1.jpg", "src": "https://commons.wikimedia.org/wiki/File:Sucuk-1.jpg", "author": "Rainer Zenz", "license": "CC BY-SA 3.0"}, "kahvalti-3": {"file": "kahvalti-3.jpg", "src": "https://commons.wikimedia.org/wiki/File:Kaymak_in_Turkey.jpg", "author": "E4024", "license": "CC BY-SA 4.0"}, "kahvalti-4": {"file": "kahvalti-4.jpg", "src": "https://commons.wikimedia.org/wiki/File:White_cheese_from_Turkey.jpg", "author": "E4024", "license": "CC BY-SA 4.0"}, "kahvalti-6": {"file": "kahvalti-6.png", "src": "https://commons.wikimedia.org/wiki/File:Burek_trokut_1.png", "author": "", "license": "CC BY-SA 2.5"}, "kahvalti-7": {"file": "kahvalti-7.jpg", "src": "https://commons.wikimedia.org/wiki/File:Turkish_tea2.jpg", "author": "henribergius", "license": "CC BY-SA 2.0"}, "kahvalti-9": {"file": "kahvalti-9.jpg", "src": "https://commons.wikimedia.org/wiki/File:Boortsog.JPG", "author": "Vidor", "license": "Public domain"}, "tatli-1": {"file": "tatli-1.jpg", "src": "https://commons.wikimedia.org/wiki/File:K%C3%BCnefe.jpg", "author": "elif ayse", "license": "CC BY 2.0"}, "tatli-3": {"file": "tatli-3.jpg", "src": "https://commons.wikimedia.org/wiki/File:Kazandibi_Dessert.jpg", "author": "Garrett Ziegler", "license": "CC BY-SA 4.0"}, "tatli-4": {"file": "tatli-4.jpg", "src": "https://commons.wikimedia.org/wiki/File:TurkishDelightDisplay.jpg", "author": "Quick fix", "license": "CC BY-SA 2.0"}, "tatli-9": {"file": "tatli-9.jpg", "src": "https://commons.wikimedia.org/wiki/File:Pastel_de_Tres_Leches.jpg", "author": "@joefoodie", "license": "CC BY 2.0"}, "hayvan-1": {"file": "hayvan-1.jpg", "src": "https://commons.wikimedia.org/wiki/File:Bengal_tiger_%28Panthera_tigris_tigris%29_female_3_crop.jpg", "author": "Charles J. Sharp", "license": "CC BY-SA 4.0"}, "muzik-6": {"file": "muzik-6.jpg", "src": "https://commons.wikimedia.org/wiki/File:Zeki_M%C3%BCren_cropped.jpg", "author": "Gogolplex", "license": "CC BY-SA 4.0"}, "muzik-7": {"file": "muzik-7.jpg", "src": "https://commons.wikimedia.org/wiki/File:Ne%C5%9Fet_Erta%C5%9F_-_panoramio.jpg", "author": "Tevfik Teker", "license": "CC BY 3.0"}, "konsol-2": {"file": "konsol-2.png", "src": "https://commons.wikimedia.org/wiki/File:NES-Console-Set.png", "author": "Evan-Amos", "license": "Public domain"}, "konsol-3": {"file": "konsol-3.png", "src": "https://commons.wikimedia.org/wiki/File:Game-Boy-FL.png", "author": "Transfrom JPEG version and remove white background. Original by Evan-Amos.", "license": "Public domain"}, "konsol-6": {"file": "konsol-6.jpg", "src": "https://commons.wikimedia.org/wiki/File:Nintendo-Switch-Console-Docked-wJoyConRB.jpg", "author": "Evan-Amos", "license": "Public domain"}, "tatil-7": {"file": "tatil-7.jpg", "src": "https://commons.wikimedia.org/wiki/File:View_of_Empire_State_Building_from_Rockefeller_Center_New_York_City_dllu_%28cropped%29.jpg", "author": "Dllu", "license": "CC BY-SA 4.0"}, "tatil-8": {"file": "tatil-8.jpg", "src": "https://commons.wikimedia.org/wiki/File:Ayder_Yaylasi_%40_Rize-Turkey.JPG", "author": "Dr. Zeynel Cebeci", "license": "CC BY-SA 3.0"}, "tatil-9": {"file": "tatil-9.jpg", "src": "https://commons.wikimedia.org/wiki/File:View_Kas.jpg", "author": "Luc Coekaerts", "license": "CC0"}, "konsol-5": {"file": "konsol-5.jpg", "src": "https://commons.wikimedia.org/wiki/File:Xbox-360-Pro-wController.jpg", "author": "Evan-Amos", "license": "Public domain"}, "muzik-8": {"file": "muzik-8.jpg", "src": "https://commons.wikimedia.org/wiki/File:Sertab_Erener_konser_%C3%B6ncesi_kulisinde..jpg", "author": "Gurdenizb", "license": "CC BY-SA 4.0"}, "modif-0": {"file": "modif-0.jpg", "src": "https://commons.wikimedia.org/wiki/File:Turbocompressor.JPG", "author": "Piero at Dutch Wikipedia", "license": "CC BY-SA 3.0"}, "modif-1": {"file": "modif-1.jpg", "src": "https://commons.wikimedia.org/wiki/File:2008_Porsche_911_997_Turbo_RUF_RT_12_-_Flickr_-_The_Car_Spy.jpg", "author": "The Car Spy", "license": "CC BY 2.0"}, "modif-3": {"file": "modif-3.png", "src": "https://commons.wikimedia.org/wiki/File:Blue_mustang_ecoboost_rear_black_exhaust_tips.png", "author": "Elijahcal", "license": "CC BY 4.0"}, "modif-5": {"file": "modif-5.jpg", "src": "https://commons.wikimedia.org/wiki/File:Coilovers.jpg", "author": "Cameron Chapman", "license": "CC BY 2.0"}, "modif-7": {"file": "modif-7.jpg", "src": "https://commons.wikimedia.org/wiki/File:Schroth,_Professional_MotorSport_World_Expo_2024,_Cologne_(P1031213).jpg", "author": "Matti Blume", "license": "CC BY-SA 4.0"}, "modif-2": {"file": "modif-2.jpg", "src": "https://commons.wikimedia.org/wiki/File:IAA_Summit_2023,_Munich_(P1110833).jpg", "author": "Matti Blume", "license": "CC BY-SA 4.0"}, "modif-4": {"file": "modif-4.jpg", "src": "https://commons.wikimedia.org/wiki/File:Nissan_GT-R_Liberty_Walk.jpg", "author": "Calreyn88", "license": "CC BY-SA 4.0"}, "modif-6": {"file": "modif-6.png", "src": "https://commons.wikimedia.org/wiki/File:Colored_underglow_lights_on_vehicle_in_Inverness,_Florida.png", "author": "The Eloquent Peasant", "license": "CC BY 4.0"}, "modif-8": {"file": "modif-8.jpg", "src": "https://commons.wikimedia.org/wiki/File:Gallardo_Spyder_-_Explored._(5580203972).jpg", "author": "Damian Morys from New York City, United States", "license": "CC BY 2.0"}, "modif-9": {"file": "modif-9.jpg", "src": "https://commons.wikimedia.org/wiki/File:Fully_vinyl_wraped_car_with_pattern.jpg", "author": "Tobias ToMar Maier", "license": "CC BY-SA 3.0"}}};
+const BUDGET=20, ITEMS=10, MINI=5, MAXP=8;
+function N(g){return (g.items&&g.items.length)||ITEMS}
+const THEMES=DATA.themes, CREDITS=DATA.credits;
+
+// ---------- yardımcılar ----------
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+let store=null;try{store=window.localStorage}catch(e){}
+const ls={get(k){try{return store&&store.getItem(k)}catch(e){return null}},set(k,v){try{store&&store.setItem(k,v)}catch(e){}}};
+function initials(s){return String(s).split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase()}
+function hue(s){return hash(String(s))%360}
+// eşya: {t, img} — eski odalarda düz metin olabilir
+function it(x){return typeof x==="string"?{t:x,img:null}:x}
+function photo(x,cls=""){
+  x=it(x);const c=x.img&&CREDITS[x.img];
+  if(c)return `<div class="ph ${cls}"><img src="img/${esc(c.file)}" alt="${esc(x.t)}" loading="lazy" decoding="async"></div>`;
+  if(x.s){const h=330+hash(x.t)%40;
+    return `<div class="ph mem ${cls}" style="background:radial-gradient(circle at 30% 25%,hsl(${h%360} 85% 72%),hsl(${(h+20)%360} 65% 42%) 70%)"><div class="fb"><span class="heart">♥</span><span class="ms">${esc(x.s)}</span></div></div>`}
+  const h=hue(x.t);
+  return `<div class="ph ${cls}" style="background:linear-gradient(135deg,hsl(${h} 70% 45%),hsl(${(h+50)%360} 75% 30%))"><div class="fb">${esc(initials(x.t))}</div></div>`;
+}
+function avatar(g,id){const n=pname(g,id),h=hue(id);return `<span class="av" style="background:hsl(${h} 60% 42%)">${esc(initials(n)||"?")}</span>`}
+
+// ---------- oyun mantığı ----------
+function bidsOf(g,r){return (g.bids&&g.bids[g.gid+"_"+r])||{}}
+function votesOf(g){return (g.votes&&g.votes[g.gid])||{}}
+function roster(g){return g.roster||Object.keys(g.players||{}).sort((a,b)=>g.players[a].order-g.players[b].order)}
+function pname(g,id){return (g.players&&g.players[id]&&g.players[id].name)||"Oyuncu"}
+function ledger(g,upto){
+  const R=roster(g),cash={},won={};
+  R.forEach(id=>{cash[id]=BUDGET;won[id]=[]});
+  for(let r=0;r<upto;r++){const res=resolve(g,r,cash);if(res.winner){cash[res.winner]-=res.price;won[res.winner].push({item:it(g.items[r]),price:res.price})}}
+  return {cash,won};
+}
+function bidsIn(g,r,cash){const b=bidsOf(g,r);return roster(g).every(id=>b[id]!=null||cash[id]<=0)}
+function resolve(g,r,cash){
+  const b=bidsOf(g,r);let best=null;
+  roster(g).forEach(id=>{const a=Math.min(Number(b[id])||0,cash[id]);if(a<1)return;
+    const k=[a,cash[id],hash(g.code+":"+r+":"+id)];
+    if(!best||k[0]>best.k[0]||(k[0]===best.k[0]&&(k[1]>best.k[1]||(k[1]===best.k[1]&&k[2]>best.k[2]))))best={id,k}});
+  return {winner:best?best.id:null,price:best?best.k[0]:0};
+}
+function voteTally(g){const t={};roster(g).forEach(id=>t[id]=0);const V=votesOf(g);for(const v in V){if(V[v] in t)t[V[v]]++}return t}
+
+// ---------- durum ----------
+const S={mode:null,code:null,myId:null,g:null,db:null,sample:null,unsub:null,err:"",busy:false,stale:false,timer:null,bid:0,judging:false,customOpen:false};
+// ---------- PeerJS aktarımı (GitHub sürümü) ----------
+// Ev sahibinin tarayıcısı oyunun durumunu tutar; diğerleri ona bağlanır.
+const PREFIX="mezat20-v1-";
+function pid(){let v=ls.get("m20-pid");if(!v){v="p"+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);ls.set("m20-pid",v)}return v}
+const P={peer:null,conns:[],host:null,isHost:false,retry:0};
+function broadcast(){if(!P.isHost)return;const msg={type:"state",g:S.g};P.conns.forEach(c=>{try{c.open&&c.send(msg)}catch(e){}});
+  try{ls.set("m20-host-"+S.code,JSON.stringify(S.g))}catch(e){}}
+function hostApply(from,patch){
+  // istemcinin yazabileceği alanları sınırla
+  const g=S.g,ok={};
+  if(patch.players&&patch.players[from]&&!g.players[from]){
+    if(g.status==="lobby"&&Object.keys(g.players).length<MAXP)ok.players={[from]:{name:String(patch.players[from].name||"Oyuncu").slice(0,18),order:Date.now()}};
+  }
+  if(patch.bids){for(const k in patch.bids){const v=patch.bids[k]&&patch.bids[k][from];if(v!=null&&k===g.gid+"_"+g.idx){ok.bids={[k]:{[from]:Math.max(0,Math.min(BUDGET,v|0))}}}}}
+  if(patch.votes&&patch.votes[g.gid]&&patch.votes[g.gid][from]!=null)ok.votes={[g.gid]:{[from]:String(patch.votes[g.gid][from])}};
+  deepMerge(g,ok);broadcast();render();
+}
+function hostOpen(code,g){
+  S.mode="online";S.code=code;S.g=g;P.isHost=true;S.busy=true;render();
+  const peer=new Peer(PREFIX+code,{debug:0});P.peer=peer;
+  peer.on("open",()=>{S.busy=false;S.stale=false;P.retry=0;broadcast();render()});
+  peer.on("connection",c=>{
+    c.on("open",()=>{P.conns.push(c);c.send({type:"state",g:S.g})});
+    c.on("data",m=>{if(m&&m.type==="patch"&&m.from)hostApply(String(m.from),m.patch||{})});
+    c.on("close",()=>{P.conns=P.conns.filter(x=>x!==c)});
+  });
+  peer.on("error",e=>{
+    if(e.type==="unavailable-id"&&P.retry<6){P.retry++;S.err="Oda yeniden açılıyor…";render();try{peer.destroy()}catch(x){}setTimeout(()=>{S.err="";hostOpen(code,S.g)},3000);return}
+    if(e.type==="unavailable-id"){S.err="Bu oda kodu şu an başka bir sekmede açık.";S.busy=false;render();return}
+    if(e.type==="network"||e.type==="server-error"||e.type==="socket-error"){S.stale=true;render();return}
+  });
+  peer.on("disconnected",()=>{try{peer.reconnect()}catch(e){}});
+}
+function clientOpen(code,name){
+  S.mode="online";S.code=code;S.g=null;P.isHost=false;S.busy=true;render();
+  const peer=new Peer(undefined,{debug:0});P.peer=peer;
+  let gotState=false;
+  const connect=()=>{
+    const c=peer.connect(PREFIX+code,{reliable:true});P.host=c;
+    c.on("open",()=>{c.send({type:"patch",from:S.myId,patch:{players:{[S.myId]:{name}}}})});
+    c.on("data",m=>{if(m&&m.type==="state"){gotState=true;const prev=S.g;S.g=m.g;S.busy=false;S.stale=false;
+      if(!prev||prev.idx!==S.g.idx||prev.status!==S.g.status)S.bid=0;ls.set("m20-room",code);ls.set("m20-room-name",name);render()}});
+    c.on("close",()=>{if(S.mode!=="online"||S.code!==code)return;S.stale=true;render();setTimeout(()=>{if(S.mode==="online"&&S.code===code&&!P.isHost)connect()},3000)});
+  };
+  peer.on("open",connect);
+  peer.on("error",e=>{
+    if(e.type==="peer-unavailable"){if(!gotState){S.err="Bu kodla açık bir oda bulunamadı. Ev sahibinin sayfası açık mı?";leave(true)}else{S.stale=true;render()}return}
+    S.stale=true;render();
+  });
+  setTimeout(()=>{if(!gotState&&S.mode==="online"&&S.code===code){S.stale=true;render()}},10000);
+}
+async function write(patch){
+  if(S.mode==="local"){deepMerge(S.g,patch);render();return true}
+  if(P.isHost){deepMerge(S.g,patch);broadcast();render();return true}
+  try{P.host.send({type:"patch",from:S.myId,patch});return true}catch(e){S.err="Gönderilemedi, bağlantı kuruluyor…";render();return false}
+}
+function randCode(){const A="ABCDEFGHJKLMNPRSTUVYZ23456789";let s="";for(let i=0;i<4;i++)s+=A[Math.floor(Math.random()*A.length)];return s}
+function nick(){const v=((document.getElementById("nick")||{}).value||ls.get("m20-nick")||"").trim().slice(0,18);return v||"Oyuncu"}
+function createRoom(){
+  const name=nick();ls.set("m20-nick",name);const code=randCode();
+  const g={code,createdAt:Date.now(),host:S.myId,status:"lobby",themeIdx:0,custom:null,players:{[S.myId]:{name,order:Date.now()}},bids:{},votes:{},idx:0};
+  ls.set("m20-room",code);hostOpen(code,g);
+}
+function joinRoom(){
+  const code=(document.getElementById("joinCode").value||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  if(code.length!==4){S.err="Oda kodu 4 karakter olmalı.";render();return}
+  const name=nick();ls.set("m20-nick",name);S.err="";clientOpen(code,name);
+}
+function leave(keepErr){
+  try{P.peer&&P.peer.destroy()}catch(e){}
+  if(P.isHost&&S.code)ls.set("m20-host-"+S.code,"");
+  P.peer=null;P.conns=[];P.host=null;P.isHost=false;
+  S.mode=null;S.g=null;S.code=null;ls.set("m20-room","");if(!keepErr)S.err="";render();
+}
+
+function themeOf(g){if(g.custom)return {name:g.custom.name,items:g.custom.items.map(t=>({t,img:null}))};const T=THEMES[g.themeIdx||0]||THEMES[0];return {name:T.name,items:T.items}}
+function startGame(){
+  const g=S.g,t=themeOf(g);
+  if(t.items.length<MINI){S.err=`Temada en az ${MINI} eşya olmalı.`;render();return}
+  const R=Object.keys(g.players).sort((a,b)=>g.players[a].order-g.players[b].order);
+  write({status:"bidding",gid:"g"+Date.now().toString(36),roster:R,themeName:t.name,items:shuffle(t.items).slice(0,ITEMS),idx:0,judge:null});
+}
+function myBidder(){
+  if(S.mode==="online")return S.myId;
+  const g=S.g,L=ledger(g,g.idx),b=bidsOf(g,g.idx);
+  return roster(g).find(id=>b[id]==null&&L.cash[id]>0)||null;
+}
+function submitBid(){
+  const g=S.g,who=myBidder();if(!who||S.busy)return;
+  const cash=ledger(g,g.idx).cash[who];const amt=Math.max(0,Math.min(cash,S.bid|0));
+  S.bid=0;write({bids:{[g.gid+"_"+g.idx]:{[who]:amt}}});
+}
+function nextItem(){const g=S.g;if(g.idx+1>=N(g))write({status:"vote",idx:N(g)});else write({idx:g.idx+1})}
+function myVoter(){
+  const g=S.g,R=roster(g);
+  if(S.mode==="online")return R.includes(S.myId)&&!votesOf(g)[S.myId]?S.myId:null;
+  return R.find(id=>!votesOf(g)[id])||null;
+}
+function castVote(to){const who=myVoter();if(!who||S.busy)return;write({votes:{[S.g.gid]:{[who]:to}}})}
+async function askJudge(){
+  if(!S.sample||S.judging)return;
+  const g=S.g,L=ledger(g,N(g)),R=roster(g);
+  const teams=R.map(id=>({oyuncu:pname(g,id),takim:L.won[id].map(w=>w.item.t+" ($"+w.price+")"),kalan_para:L.cash[id]}));
+  S.judging=true;S.err="";render();
+  try{
+    const res=await S.sample.json(`Bir "20 dolar mezat" parti oyununda hakemsin. Tema: "${g.themeName}". Her oyuncu 20 dolarla açık artırmada eşya topladı. Temanın en iyi versiyonunu kuran oyuncuyu seç. Eşya sayısını, kalitesini ve temaya uygunluğunu tart; az eşyalı ama çok güçlü bir takım da kazanabilir. Esprili ama adil ol, Türkçe yaz.
+Takımlar (JSON): ${JSON.stringify(teams)}
+Yalnızca şu JSON'u döndür: {"kazanan":"<oyuncu adı aynen>","yorum":"<3-5 cümle, her takım hakkında kısa yorum ve neden kazandığı>"}`,{modelTier:"default"});
+    const winId=R.find(id=>pname(g,id)===res.kazanan)||null;
+    await write({judge:{winner:winId,name:String(res.kazanan||"").slice(0,40),text:String(res.yorum||"").slice(0,1500)}});
+  }catch(e){S.err=e&&e.code==="not_granted"?"Yapay zeka hakem bu görünümde kullanılamıyor.":e&&e.code==="rate_limited"?"Hakem şu an meşgul, biraz sonra tekrar dene.":"Hakem karar veremedi, tekrar dene."}
+  S.judging=false;render();
+}
+function rematch(){write({status:"lobby",judge:null,idx:0,roster:null,items:null})}
+function startLocal(){
+  const names=(document.getElementById("localNames").value||"").split(/[\n,]/).map(s=>s.trim()).filter(Boolean).slice(0,MAXP);
+  if(names.length<2){S.err="Aynı cihazda oynamak için en az 2 isim yaz (virgülle ayır).";render();return}
+  const players={};names.forEach((n,i)=>players["L"+i]={name:n.slice(0,18),order:i});
+  S.mode="local";S.err="";S.myId="L0";
+  S.g={code:"LOCAL"+Date.now(),host:"L0",status:"lobby",themeIdx:0,custom:null,players,bids:{},votes:{},idx:0};
+  render();
+}
+
+// ---------- görünüm ----------
+const app=document.getElementById("app");
+function bind(id,fn){const el=document.getElementById(id);if(el)el.addEventListener("click",fn)}
+function errHtml(){return S.err?`<p class="err" role="alert">${esc(S.err)}</p>`:""}
+function isHost(){return S.mode==="local"||(S.g&&S.g.host===S.myId)}
+function render(){
+  document.getElementById("modeTag").textContent=S.mode==="online"?"Oda "+S.code:S.mode==="local"?"Aynı cihaz":"Açık artırma draft · 2-8 oyuncu";
+  if(!S.mode)return home();
+  const g=S.g;
+  if(!g){app.innerHTML=`<div class="card stack"><p class="note">${S.stale?"Odaya ulaşılamıyor, bağlantını kontrol et.":"Oda yükleniyor…"}</p>${errHtml()}<div class="row"><button class="ghost" id="leaveBtn">Ana sayfa</button></div></div>`;bind("leaveBtn",()=>leave());return}
+  if(g.status==="lobby")return lobby();
+  if(g.status==="bidding")return bidding();
+  return results();
+}
+const HERO=[["efsane",0,"8%","10%",-8,14],["garaj",0,"34%","4%",5,9],["sokak",0,"60%","12%",-4,6],["konsol",1,"14%","46%",6,3],["harika",5,"42%","40%",-6,11],["tatli",0,"64%","50%",8,2]];
+function home(){
+  const ok=!!S.db&&!!S.myId;
+  const col=HERO.map(([tid,i,l,t,rot,price])=>{const T=THEMES.find(x=>x.id===tid);if(!T)return"";return `<div class="ph" style="left:${l};top:${t};transform:rotate(${rot}deg)">${photo(T.items[i]).replace(/^<div class="ph ">|<\/div>$/g,"")}<span class="price">$${price}</span></div>`}).join("");
+  app.innerHTML=`<div class="stack" style="gap:18px">
+  <div class="hero">
+    <div class="collage" aria-hidden="true">${col}<div class="claim">20 dolar. 10 eşya.<br>En iyi kadro kazanır.</div></div>
+    <div class="card stack">
+      <div><label for="nick">Takma adın</label><input id="nick" maxlength="18" placeholder="ör. Mezatçı Necmi" value="${esc(ls.get("m20-nick")||"")}"></div>
+      <div class="split">
+        <div class="stack"><h3>Oda kur</h3><p class="note">Kodu arkadaşına gönder, temayı sen seç.</p><button class="hot" id="createBtn" ${ok&&!S.busy?"":"disabled"}>Oda kur</button></div>
+        <div class="stack"><h3>Odaya katıl</h3><input id="joinCode" class="code-in" maxlength="4" placeholder="KOD" autocomplete="off" aria-label="Oda kodu"><button id="joinBtn" class="ghost" ${ok&&!S.busy?"":"disabled"}>Katıl</button></div>
+      </div>
+      ${ok?"":`<p class="note">${S.db===null?"Online bağlantı kütüphanesi yüklenemedi. İnternetini kontrol et ya da aynı cihazda oyna.":"Online bağlantı hazırlanıyor…"}</p>`}
+      ${errHtml()}
+      <div style="border-top:1px solid var(--line);padding-top:12px" class="stack">
+        <div><label for="localNames">Aynı cihazda · oyuncular (virgülle)</label><input id="localNames" placeholder="Ali, Ayşe, Can"></div>
+        <div class="row"><button id="localBtn" class="ghost">Aynı cihazda başla</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="card rules">
+    <div class="rule"><span class="n">$20</span><div><b>Herkesin kasası 20 dolar</b><p>Para bitince mezat da biter.</p></div></div>
+    <div class="rule"><span class="n">×10</span><div><b>10 eşya mezata çıkar</b><p>Fotoğraflı, tek tek, karışık sırayla.</p></div></div>
+    <div class="rule"><span class="n">✉</span><div><b>Kapalı zarf teklif</b><p>En yüksek teklif alır, teklifi kadar öder. 0 = pas.</p></div></div>
+    <div class="rule"><span class="n">★</span><div><b>En iyi kadro kazanır</b><p>Herkes en iyi kadroya oy verir.</p></div></div>
+  </div>
+  <div class="card stack"><h2>${THEMES.length} hazır tema</h2>${themeGrid(null,false)}</div></div>`;
+  bind("createBtn",createRoom);bind("joinBtn",joinRoom);bind("localBtn",startLocal);
+  const j=document.getElementById("joinCode");if(j)j.addEventListener("keydown",e=>{if(e.key==="Enter")joinRoom()});
+}
+function themeGrid(g,interactive){
+  const sel=g?(g.custom?"custom":g.themeIdx||0):-1;
+  const order=THEMES.map((T,i)=>i).sort((a,b)=>(THEMES[b].special?1:0)-(THEMES[a].special?1:0));
+  const cards=order.map(i=>{const T=THEMES[i];return `<button class="th ${T.special?"special":""} ${sel===i?"sel":""}" data-theme="${i}" ${interactive?"":"disabled"} aria-pressed="${sel===i}">
+     <div class="mosaic">${T.items.slice(0,4).map(x=>photo(x)).join("")}</div><span class="nm">${esc(T.name)}</span></button>`}).join("");
+  const custom=interactive||sel==="custom"?`<button class="th custom ${sel==="custom"?"sel":""}" data-theme="custom" ${interactive?"":"disabled"}><div class="mosaic">+</div><span class="nm">${g&&g.custom?esc(g.custom.name):"Kendi temanı yaz"}</span></button>`:"";
+  return `<div class="themes">${cards}${custom}</div>`;
+}
+function lobby(){
+  const g=S.g,R=Object.keys(g.players).sort((a,b)=>g.players[a].order-g.players[b].order),host=isHost(),t=themeOf(g);
+  const showCustom=host&&(g.custom||S.customOpen);
+  app.innerHTML=`<div class="stack" style="gap:18px">
+   <div class="hero" style="grid-template-columns:${S.mode==="online"?"auto 1fr":"1fr"}">
+     ${S.mode==="online"?`<div class="card stack" style="align-items:flex-start"><label>Oda kodu</label><div class="bigcode">${esc(g.code)}</div>
+       <button class="ghost" id="copyBtn">Kodu kopyala</button><p class="note" style="max-width:30ch">Arkadaşına bu sayfanın linkini ve kodu gönder.</p></div>`:""}
+     <div class="card stack"><h2>Masadakiler <span class="tag">${R.length}/${MAXP}</span></h2>
+       <div class="podiums">${R.map(id=>`<div class="pod ${id===S.myId&&S.mode==="online"?"me":""}"><div class="top">${avatar(g,id)}<span class="nm">${esc(pname(g,id))}</span></div><div class="cash">$${BUDGET}</div><span class="st">${id===g.host?"ev sahibi":"hazır"}</span></div>`).join("")}</div>
+       ${R.length<2?`<p class="note">En az bir rakip bekleniyor…</p>`:""}</div>
+   </div>
+   <div class="card stack"><div class="row" style="justify-content:space-between"><h2>Tema: ${esc(t.name)}</h2>${host?"":`<span class="tag">ev sahibi seçiyor</span>`}</div>
+     ${themeGrid(g,host&&!S.busy)}
+     ${showCustom?`<div class="stack" style="border-top:1px solid var(--line);padding-top:14px">
+       <div><label for="cName">Tema adı</label><input id="cName" maxlength="60" value="${esc(g.custom?g.custom.name:"")}" placeholder="ör. En iyi Türk dizisi"></div>
+       <div><label for="cItems">${MINI}-${ITEMS} eşya, her satıra bir tane</label><textarea id="cItems" placeholder="Ezel&#10;Behzat Ç.&#10;…">${esc(g.custom?g.custom.items.join("\n"):"")}</textarea></div>
+       <div class="row"><button class="ghost" id="saveCustom">Temayı kaydet</button><span class="note">Kendi temalarında fotoğraf yerine renkli kart çıkar.</span></div></div>`:""}
+   </div>
+   ${errHtml()}
+   <div class="row">${host?`<button class="hot" id="startBtn" ${R.length>=2&&!S.busy&&t.items.length>=MINI?"":"disabled"}>${R.length<2?"En az 2 oyuncu gerekli":"Mezatı başlat"}</button>`:`<span class="note">Ev sahibinin başlatması bekleniyor…</span>`}
+   <button class="ghost" id="leaveBtn">${S.mode==="local"?"Çık":"Odadan çık"}</button></div></div>`;
+  bind("startBtn",startGame);bind("leaveBtn",()=>leave());
+  bind("copyBtn",()=>{const b=document.getElementById("copyBtn");try{navigator.clipboard.writeText(g.code).then(()=>b.textContent="Kopyalandı",()=>b.textContent="Kod: "+g.code)}catch(e){b.textContent="Kod: "+g.code}});
+  app.querySelectorAll("button.th:not(:disabled)").forEach(b=>b.addEventListener("click",()=>{
+    const v=b.dataset.theme;if(v==="custom"){S.customOpen=true;render();return}
+    S.customOpen=false;if(!g.custom&&(g.themeIdx||0)===Number(v))return;write({themeIdx:Number(v),custom:null})}));
+  bind("saveCustom",()=>{const name=(document.getElementById("cName").value||"Kendi temam").trim().slice(0,60);
+    const items=document.getElementById("cItems").value.split("\n").map(s=>s.trim().slice(0,60)).filter(Boolean);
+    if(items.length<MINI){S.err=`En az ${MINI} eşya gerekiyor, şu an ${items.length} tane var.`;render();return}
+    S.err="";write({custom:{name,items:items.slice(0,ITEMS)}})});
+}
+function podiums(g,L,b,showStatus){
+  return `<div class="podiums">${roster(g).map(id=>{
+    const st=!showStatus?"":L.cash[id]<=0?`<span class="st">parası bitti</span>`:b[id]!=null?`<span class="st ok">zarf verildi ✓</span>`:`<span class="st">düşünüyor…</span>`;
+    return `<div class="pod ${id===S.myId&&S.mode==="online"?"me":""}"><div class="top">${avatar(g,id)}<span class="nm">${esc(pname(g,id))}</span></div>
+      <div class="cash">$${L.cash[id]}</div><div class="meter"><i style="width:${L.cash[id]/BUDGET*100}%"></i></div>${st}
+      ${L.won[id].length?`<div class="mini">${L.won[id].map(w=>photo(w.item)).join("")}</div>`:""}</div>`}).join("")}</div>`;
+}
+function creditLine(x){x=it(x);const c=x.img&&CREDITS[x.img];if(!c)return"";return `<a class="credit" href="${esc(c.src)}" target="_blank" rel="noopener">Foto: ${esc(c.author||"Wikimedia Commons")} · ${esc(c.license||"")}</a>`}
+function bidding(){
+  const g=S.g,r=g.idx,L=ledger(g,r),b=bidsOf(g,r),all=bidsIn(g,r,L.cash),R=roster(g),cur=it(g.items[r]);
+  const dots=g.items.map((_,i)=>`<i class="${i<r?"done":i===r?"now":""}"></i>`).join("");
+  let panel="",stamp="";
+  if(!all){
+    const who=myBidder();
+    if(S.mode==="online"&&!R.includes(S.myId))panel=`<p class="note">İzliyorsun. Teklifler bekleniyor…</p>`;
+    else if(!who||b[who]!=null)panel=`<div class="stack"><h3>Zarfın verildi</h3><div class="amount">$${b[S.myId]}</div><p class="note">Diğer teklifler bekleniyor…</p></div>`;
+    else if(L.cash[who]<=0)panel=`<p class="note">Paran bitti, bu eşyayı izliyorsun.</p>`;
+    else{const max=L.cash[who];S.bid=Math.min(S.bid,max);
+      const chips=[0,1,2,3,5,8,max].filter((v,i,a)=>v<=max&&a.indexOf(v)===i);
+      panel=`${S.mode==="local"?`<p style="margin:0;font-weight:800">Ekran <span style="color:var(--paddle)">${esc(pname(g,who))}</span>'da. Diğerleri baksın başka yere.</p>`:""}
+        <div><label>Gizli teklifin · kasanda $${max}</label>
+        <div class="stepper"><button class="ghost" id="minus" aria-label="Azalt">−</button><div class="amount" aria-live="polite">$${S.bid}</div><button class="ghost" id="plus" aria-label="Artır">+</button></div></div>
+        <div class="chips">${chips.map(v=>`<button data-v="${v}" class="${S.bid===v?"on":""}">${v===0?"Pas":v===max?"Hepsi $"+v:"$"+v}</button>`).join("")}</div>
+        <button class="hot" id="bidBtn" ${S.busy?"disabled":""}>${S.bid===0?"Pas geç":"$"+S.bid+" teklif ver"}</button>`;}
+  }else{
+    const res=resolve(g,r,L.cash);
+    stamp=res.winner?`<div class="stamp">SATILDI · $${res.price}</div>`:`<div class="stamp burn">YANDI</div>`;
+    const rows=R.map(id=>({id,a:b[id]==null?0:Math.min(b[id],L.cash[id])})).sort((x,y)=>y.a-x.a)
+      .map(x=>`<div class="bidrow ${x.id===res.winner?"win":""}">${avatar(g,x.id)}<span class="nm">${esc(pname(g,x.id))}</span><b>${x.a?"$"+x.a:"pas"}</b></div>`).join("");
+    panel=`<h3>${res.winner?esc(pname(g,res.winner))+" aldı!":"Kimse istemedi."}</h3>${rows}
+      <p class="note">Eşitlikte kasasında daha çok para kalan alır, o da eşitse kura çekilir.</p>
+      ${isHost()?`<button class="hot" id="nextBtn" ${S.busy?"disabled":""}>${r+1>=N(g)?"Sonuçlara geç":"Sıradaki eşya"}</button>`:`<span class="note">Ev sahibi sıradaki eşyayı açacak…</span>`}`;
+  }
+  const next=g.items[r+1]&&it(g.items[r+1]),nc=next&&next.img&&CREDITS[next.img];
+  app.innerHTML=`<div class="stack" style="gap:16px">
+    ${podiums(g,L,b,!all)}
+    <div class="stage">
+      <div class="stack" style="gap:10px">
+        <div class="lot">${photo(cur)}${creditLine(cur)}${stamp}
+          <div class="cap"><div class="no">EŞYA ${r+1}/${N(g)} · ${esc(g.themeName)}</div><div class="item">${esc(cur.t)}</div></div></div>
+        <div class="dots">${dots}</div>
+      </div>
+      <div class="card panel">${panel}</div>
+    </div>
+    ${nc?`<link rel="prefetch" href="img/${esc(nc.file)}">`:""}
+    ${S.stale?`<p class="note">Bağlantı yavaş, gördüğün durum güncel olmayabilir.</p>`:""}${errHtml()}
+    <div class="row"><button class="ghost" id="leaveBtn">${S.mode==="local"?"Oyunu bitir":"Odadan çık"}</button></div></div>`;
+  const setBid=v=>{S.bid=v;render()};
+  bind("minus",()=>setBid(Math.max(0,S.bid-1)));bind("plus",()=>setBid(Math.min(L.cash[myBidder()]||0,S.bid+1)));
+  app.querySelectorAll(".chips button").forEach(x=>x.addEventListener("click",()=>setBid(Number(x.dataset.v))));
+  bind("bidBtn",submitBid);bind("nextBtn",nextItem);bind("leaveBtn",()=>leave());
+}
+function results(){
+  const g=S.g,L=ledger(g,N(g)),R=roster(g),T=voteTally(g),V=votesOf(g),voted=Object.keys(V).length,allVoted=R.every(id=>V[id]);
+  const maxV=Math.max(...R.map(id=>T[id]));const leaders=allVoted?R.filter(id=>T[id]===maxV&&maxV>0):[];
+  const voter=myVoter(),canVoteFor=id=>voter&&(R.length<=2||id!==voter);
+  const teams=R.map(id=>`<div class="team ${leaders.includes(id)||(g.judge&&g.judge.winner===id)?"top":""}">
+     <div class="row" style="justify-content:space-between"><div class="row">${avatar(g,id)}<h3>${esc(pname(g,id))}</h3></div>${allVoted?`<span class="votes">${T[id]} oy</span>`:""}</div>
+     ${L.won[id].length?`<div class="grid">${L.won[id].map(w=>`<div class="it">${photo(w.item)}<span>${esc(w.item.t)}</span><b>$${w.price}</b></div>`).join("")}</div>`:`<p class="note">Hiç eşya almadı.</p>`}
+     <p class="note">Kalan para: $${L.cash[id]}</p>
+     ${canVoteFor(id)?`<button class="ghost" data-vote="${id}" ${S.busy?"disabled":""}>Bu kadroya oy ver</button>`:""}</div>`).join("");
+  const head=allVoted?(leaders.length===1?`${esc(pname(g,leaders[0]))} kazandı!`:leaders.length>1?`Berabere: ${leaders.map(id=>esc(pname(g,id))).join(", ")}`:"Kimse oy almadı"):"Kadrolar hazır. Oylama!";
+  const voteMsg=allVoted?"":voter?(S.mode==="local"?`Oy sırası: <b>${esc(pname(g,voter))}</b>${R.length>2?" (kendine oy veremezsin)":""}`:`En iyi kadroya oy ver${R.length>2?" (kendine oy veremezsin)":""}.`):`Oylar bekleniyor (${voted}/${R.length})…`;
+  app.innerHTML=`<div class="stack" style="gap:18px">
+    <div><div class="tag">${esc(g.themeName)}</div><h2 style="font-size:clamp(30px,6vw,48px)">${head}</h2>${voteMsg?`<p class="note" style="margin-top:6px">${voteMsg}</p>`:""}</div>
+    <div class="teams">${teams}</div>
+    ${errHtml()}
+    <div class="row">${isHost()?`<button class="hot" id="againBtn" ${S.busy?"disabled":""}>Yeni mezat</button>`:""}<button class="ghost" id="leaveBtn">Ana sayfa</button></div></div>`;
+  app.querySelectorAll("[data-vote]").forEach(x=>x.addEventListener("click",()=>castVote(x.dataset.vote)));
+  bind("judgeBtn",askJudge);bind("againBtn",rematch);bind("leaveBtn",()=>leave());
+}
+document.getElementById("credits").innerHTML=THEMES.flatMap(T=>T.items.filter(x=>x.img&&CREDITS[x.img]).map(x=>{const c=CREDITS[x.img];
+  return `<li>${esc(x.t)}: <a href="${esc(c.src)}" target="_blank" rel="noopener">${esc(c.author||"Wikimedia Commons")}</a>, ${esc(c.license)}</li>`})).join("");
+
+// ---------- başlangıç ----------
+S.myId=pid();S.db=(typeof Peer!=="undefined")?{}:null;
+(()=>{const code=ls.get("m20-room");if(!code||!S.db)return;
+  let saved=null;try{saved=JSON.parse(ls.get("m20-host-"+code)||"null")}catch(e){}
+  if(saved&&saved.host===S.myId)hostOpen(code,saved);
+  else if(ls.get("m20-room-name"))clientOpen(code,ls.get("m20-room-name"));})();
+render();
+</script>
+
+</body>
+</html>
