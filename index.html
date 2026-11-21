@@ -211,6 +211,7 @@ const S={mode:null,code:null,myId:null,g:null,db:null,sample:null,unsub:null,err
 // ---------- PeerJS aktarımı (GitHub sürümü) ----------
 // Ev sahibinin tarayıcısı oyunun durumunu tutar; diğerleri ona bağlanır.
 const PREFIX="mezat20-v1-";
+function deepMerge(t,p){for(const k in p){if(p[k]&&typeof p[k]==="object"&&!Array.isArray(p[k])){t[k]=t[k]||{};deepMerge(t[k],p[k])}else t[k]=p[k]}}
 function pid(){let v=ls.get("m20-pid");if(!v){v="p"+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);ls.set("m20-pid",v)}return v}
 const P={peer:null,conns:[],host:null,isHost:false,retry:0};
 function broadcast(){if(!P.isHost)return;const msg={type:"state",g:S.g};P.conns.forEach(c=>{try{c.open&&c.send(msg)}catch(e){}});
